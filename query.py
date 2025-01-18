@@ -106,7 +106,7 @@ def parse_time_to_centuries(s):
         ret = parse(s) - fixed_date
         
     # undo offset
-    return (ret.days - 365 + 31 + 1) / (365 * 100)
+    return (ret.days - 365 - 31 - 1) / (365 * 100)
 
 def max_date(res):
     vals = res.values()    
