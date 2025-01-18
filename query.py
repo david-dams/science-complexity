@@ -2,15 +2,17 @@ import requests
 import json
 import pickle
 import datetime
+import csv
 
 from lxml import html
 from sympy.parsing.latex import parse_latex
 
 import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
 
 # TODO: complexity
-# TODO: birth place
+# TODO: hist birth place
 # TODO: replace sympy 
 
 ### FILE HANDLING
@@ -52,7 +54,7 @@ def fetch_sparql_results(sparql_query):
         
 def download_data(name):
     query = """
-    SELECT DISTINCT ?stuff ?stuffLabel ?equation ?person ?birth
+SELECT DISTINCT ?stuff ?stuffLabel ?equation ?person ?birth ?birthPlace ?birthPlaceLabel
 WHERE
 {
     
@@ -60,6 +62,9 @@ WHERE
            (wdt:P138|wdt:P61) ?person.
     
   ?person wdt:P569 ?birth.
+  
+  OPTIONAL {?person wdt:P19 ?tmp.
+            ?tmp wdt:P17 ?birthPlace.}
   
   SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE]". }
 }
@@ -92,6 +97,32 @@ def get_eqs_to_dates_dict(name):
             errs_eq[eq_txt] = e
             
     return res, errs_alt, errs_eq
+
+def postprocess(name, print_errs = False):
+    """turns raw data into csv file with structure
+
+    equation_raw_string, date_raw_string, birthplace_raw_string
+    """
+    
+    parse_eq = lambda txt : parse_latex(txt.replace("{\displaystyle", ""))
+
+    data = load(name)
+
+    def try_get(d, key):
+        try:
+            return d[key]
+        except:
+            return None        
+    
+    with open('output.csv', mode='w', newline='') as file:
+        writer = csv.writer(file)
+        for d in data:
+            birthYear = d['birth']
+            eqName = try_get(d, 'stuffLabel')            
+            eqContent = try_get(dict(html.fromstring(d['equation']).items()), 'alttext')                           
+            birthPlace = try_get(d, 'birthPlaceLabel')
+            writer.writerow([eqName, eqContent, birthYear, birthPlace])
+
 
 def parse_time_to_centuries(s):
     """parses string to time measured in units of 100yrs"""
@@ -129,8 +160,10 @@ def histogram(res):
     plt.savefig("eqns_years.pdf")
     plt.close()
     
-def get_time_complexity(res, c_lower = -np.inf, c_upper = np.inf, y_lower = -np.inf, y_upper = np.inf):
-    comp = np.array([(parse_time_to_centuries(year), exp.count_ops()) for exp, year in res.items()]).T
+def get_time_complexity(res):
+    return np.array([(parse_time_to_centuries(year), exp.count_ops()) for exp, year in res.items()]).T
+
+def filter_time_complexity(comp, c_lower = -np.inf, c_upper = np.inf, y_lower = -np.inf, y_upper = np.inf):
     idxs = (c_lower < comp[1]) & (comp[1] < c_upper) & (y_lower < comp[0]) & (comp[0] < y_upper)
     return comp[:, idxs]
 
@@ -139,10 +172,23 @@ def time_complexity(res):
     plt.plot(comp[0], comp[1], 'o')
     plt.show()
     plt.close()
-
+    
 def hist_complexity(res):
-    comp = get_time_complexity(res, y_lower = 18, y_upper = 20)
-    plt.hist(comp[1], bins = 'auto')
+    density = True
+
+    def add_hist(label, c_lower = -np.inf, c_upper = np.inf, y_lower = -np.inf, y_upper = np.inf):
+        comp_filtered = filter_time_complexity(comp, c_lower, c_upper, y_lower, y_upper)
+        plt.hist(comp_filtered[1], bins = 'auto', density = True, label = label, alpha = 0.8)
+        
+    
+    comp = get_time_complexity(res)
+    
+    c_limit = np.inf
+    add_hist('<15', y_upper = 15, c_upper = c_limit)
+    add_hist('15-18', y_lower = 14, y_upper = 19, c_upper = c_limit)
+    add_hist('>18', y_lower = 18, c_upper = c_limit)
+
+    plt.legend()
     plt.show()
     plt.close()
 
@@ -150,7 +196,10 @@ if __name__ == '__main__':
     data_file = 'raw'
     
     # download_data(data_file)
+    postprocess(data_file)
     
+    # import pdb; pdb.set_trace()
+
     # sympy latex parsing takes long
     # res, _, _ = get_eqs_to_dates_dict(data_file)
     
