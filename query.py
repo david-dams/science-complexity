@@ -139,50 +139,27 @@ def parse_time_to_centuries(s):
     # undo offset
     return (ret.days - 365 - 31 - 1) / (365 * 100)
 
-### PLOTTING        
-def hist_complexity(res):
-    density = True
-
-    def add_hist(label, c_lower = -np.inf, c_upper = np.inf, y_lower = -np.inf, y_upper = np.inf):
-        comp_filtered = filter_time_complexity(comp, c_lower, c_upper, y_lower, y_upper)
-        plt.hist(comp_filtered[1], bins = 'auto', density = True, label = label, alpha = 0.8)
-        
-    
-    comp = get_time_complexity(res)
-    
-    c_limit = np.inf
-    add_hist('<15', y_upper = 15, c_upper = c_limit)
-    add_hist('15-18', y_lower = 14, y_upper = 19, c_upper = c_limit)
-    add_hist('>18', y_lower = 18, c_upper = c_limit)
-
-    plt.legend()
-    plt.show()
-    plt.close()
-
-def hist_birth_place(df, N_most_common):
-    df_clean.place.value_counts().head(N_most_common).plot(kind='bar')
-    plt.show()
-
-def complexity_over_time(df):
-    plt.plot(df.year, df.complexity, 'o')
-    plt.show()
-
 if __name__ == '__main__':
     data_file = 'raw'    
     # download_data(data_file)
     # postprocess(data_file)
-    # df = load_df(data_file)
-
-    # discard all invalid vals
-    df_clean = df.dropna()
+    df_raw = load_df(data_file)
     
-    # show 15 most common birth places
-    hist_birth_place(df, 15)
-
-    # show year disctribution
-    df.year.hist()
+    df_raw.place.value_counts().head(10).plot(kind='bar')    
+    plt.title('most common birth places')
     plt.show()
     
-    # show distributions corresponding to different time intervals
+    # discard all invalid vals
+    df = df_raw.dropna()
+    
+    plt.plot(df.year, df.complexity, 'o')
+    plt.title('expression complexity over time')
+    plt.show()
+    
+    df.year.hist(bins = 'auto')
+    plt.title('year coverage')
+    plt.show()
+    
     df.groupby( pd.cut(df['year'], [-np.inf, 15, 18, np.inf] ))['complexity'].hist(bins = 'auto', alpha = 0.3, legend = True)
+    plt.title('complexity distribution for different time periods')
     plt.show()    
