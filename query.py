@@ -214,6 +214,7 @@ def plot_complexity_hist(df):
     # Assigning reversed categories to the DataFrame
     df['time_period'] = pd.cut(df['year'], bins=bins, labels=labels)
 
+    # outliers
     df = df[df['complexity'] < 100]
 
     # Plotting
