@@ -5,6 +5,7 @@ import datetime
 import csv
 
 from lxml import html
+import sympy
 from sympy.parsing.latex import parse_latex
 
 import matplotlib.pyplot as plt
@@ -103,8 +104,8 @@ def postprocess(name, print_errs = False):
 
     equation_raw_string, date_raw_string, birthplace_raw_string
     """
-    
-    parse_eq = lambda txt : parse_latex(txt.replace("{\displaystyle", ""))
+     
+    # parse_eq = lambda txt : parse_latex(txt.replace("{\displaystyle", ""))
 
     data = load(name)
 
@@ -114,8 +115,9 @@ def postprocess(name, print_errs = False):
         except:
             return None        
     
-    with open('output.csv', mode='w', newline='') as file:
+    with open(f'{name}.csv', mode='w', newline='') as file:
         writer = csv.writer(file)
+        writer.writerow(["eqName", "eq", "year", "place"])
         for d in data:
             birthYear = d['birth']
             eqName = try_get(d, 'stuffLabel')            
@@ -123,18 +125,26 @@ def postprocess(name, print_errs = False):
             birthPlace = try_get(d, 'birthPlaceLabel')
             writer.writerow([eqName, eqContent, birthYear, birthPlace])
 
-
+def parse_eq_to_sympy(eq):
+    try:
+        return parse_latex(eq.replace("{\displaystyle", ""))
+    except Exception as e:
+        return None    
+            
 def parse_time_to_centuries(s):
     """parses string to time measured in units of 100yrs"""
     # pattern '-1702-01-01T00:00:00Z'
     parse = lambda x : datetime.datetime.strptime(x, '%Y-%m-%dT%H:%M:%SZ')
     # offset by 1y1m1d
     fixed_date = parse('0001-01-01T00:00:00Z')
-    
-    if s.startswith('-'):
-        ret = fixed_date - parse(s[1:])
-    else:
-        ret = parse(s) - fixed_date
+
+    try:
+        if s.startswith('-'):
+            ret = fixed_date - parse(s[1:])
+        else:
+            ret = parse(s) - fixed_date
+    except ValueError:
+        return None
         
     # undo offset
     return (ret.days - 365 - 31 - 1) / (365 * 100)
@@ -198,6 +208,19 @@ if __name__ == '__main__':
     # download_data(data_file)
     postprocess(data_file)
     
+    df = pd.read_csv(f'{data_file}.csv')    
+    df['eq'] = df['eq'].apply(parse_eq_to_sympy)    
+    # df['year'] = df.year.apply(parse_time_to_centuries)
+
+    stringify = lambda x : sympy.parsing.sympy_parser.parse_expr(sympy.printing.repr.srepr(x))
+    foo = df.copy()
+    foo['eq'] = foo['eq'].apply(stringify)    
+    
+    with open('processed.csv', 'w') as f:
+        df.to_csv(f)
+
+    foo = pd.read_csv('processed.csv')
+    
     # import pdb; pdb.set_trace()
 
     # sympy latex parsing takes long
@@ -207,4 +230,4 @@ if __name__ == '__main__':
 
     # histogram(res)
 
-    hist_complexity(res)    
+    # hist_complexity(res)    
