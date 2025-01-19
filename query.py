@@ -12,7 +12,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
-# TODO: hist birth place
 # TODO: replace sympy 
 # TODO: alternative complexity measures?
 
@@ -74,8 +73,8 @@ WHERE
     save(res, name)
     
 ### POSTPROCESSING
-def postprocess(name, print_errs = False):
-    """returns cleaned data frame. saves raw data into csv file with structure.
+def postprocess(name):
+    """saves raw data into csv file with structure.
 
     equation_raw_string, date_raw_string, birthplace_raw_string
     """
@@ -99,7 +98,8 @@ def postprocess(name, print_errs = False):
             eqContent = try_get(dict(html.fromstring(d['equation']).items()), 'alttext')                           
             birthPlace = try_get(d, 'birthPlaceLabel')
             writer.writerow([eqName, eqContent, birthYear, birthPlace])
-
+            
+def get_valid(name):
     # currently, we are losing ~1/3 => 500 eqs due to parsing errors (20-ish due to alttext, most of it from sympy)
     df = pd.read_csv(f'{name}.csv')    
     df['eq'] = df['eq'].apply(parse_eq_to_sympy)
@@ -107,7 +107,6 @@ def postprocess(name, print_errs = False):
     df = df.dropna()
     df['complexity'] = df['eq'].apply(lambda x : x.count_ops())
     return df
-
 
 def parse_eq_to_sympy(eq):
     try:
@@ -141,18 +140,9 @@ def histogram(res):
     plt.savefig("eqns_years.pdf")
     plt.close()
     
-def get_time_complexity(res):
-    return np.array([(parse_time_to_centuries(year), exp.count_ops()) for exp, year in res.items()]).T
-
 def filter_time_complexity(comp, c_lower = -np.inf, c_upper = np.inf, y_lower = -np.inf, y_upper = np.inf):
     idxs = (c_lower < comp[1]) & (comp[1] < c_upper) & (y_lower < comp[0]) & (comp[0] < y_upper)
     return comp[:, idxs]
-
-def time_complexity(res):
-    comp = get_time_complexity(res)
-    plt.plot(comp[0], comp[1], 'o')
-    plt.show()
-    plt.close()
     
 def hist_complexity(res):
     density = True
@@ -173,17 +163,20 @@ def hist_complexity(res):
     plt.show()
     plt.close()
 
-def hist(df, column, restrictions):
+def hist_birth_place(df, N_most_common):
+    df_clean.place.value_counts().head(N_most_common).plot(kind='bar')
+    plt.show()
 
-    def add_hist(label, c_lower = -np.inf, c_upper = np.inf, y_lower = -np.inf, y_upper = np.inf):
-        comp_filtered = filter_time_complexity(comp, c_lower, c_upper, y_lower, y_upper)
-        plt.hist(comp_filtered[1], bins = 'auto', density = True, label = label, alpha = 0.8)
-    
+def complexity_over_time(df):
+    plt.plot(df.year, df.complexity, 'o')
+    plt.show()
 
 if __name__ == '__main__':
     data_file = 'raw'    
     # download_data(data_file)
     # df = postprocess(data_file)
+    hist_birth_place(df, 15)
+
     
     
     # summarize(res)
