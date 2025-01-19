@@ -99,8 +99,6 @@ def postprocess(name):
             
 # currently, we are getting ~1/3 => 500 invalid vals due to parsing errors (20-ish due to alttext, most of it from sympy, 1 due to missing year)
 def load_df(name, score = score_count):
-    score_complexity = try_score(score)
-    
     df = pd.read_csv(f'{name}.csv')
     print(f'{df.isna().sum()} invalid labels, equations')
     df['eq'] = df['eq'].apply(parse_eq_to_sympy)
@@ -111,6 +109,7 @@ def load_df(name, score = score_count):
     print(f'{df.isna().sum()} invalid complexity')
     return df
 
+@try_score
 def score_depth(exp):
     def _depth(tup):
         if isinstance(tup, tuple):
@@ -119,6 +118,7 @@ def score_depth(exp):
             return 0
     return _depth(exp.args)
 
+@try_score
 def score_count(exp):
     return exp.count_ops()
 
