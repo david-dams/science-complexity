@@ -98,7 +98,9 @@ def postprocess(name):
             writer.writerow([eqName, eqContent, birthYear, birthPlace])
             
 # currently, we are getting ~1/3 => 500 invalid vals due to parsing errors (20-ish due to alttext, most of it from sympy, 1 due to missing year)
-def load_df(name):
+def load_df(name, score = score_count):
+    score_complexity = try_score(score)
+    
     df = pd.read_csv(f'{name}.csv')
     print(f'{df.isna().sum()} invalid labels, equations')
     df['eq'] = df['eq'].apply(parse_eq_to_sympy)
@@ -109,11 +111,24 @@ def load_df(name):
     print(f'{df.isna().sum()} invalid complexity')
     return df
 
-def score_complexity(x):
-    try:
-        return x.count_ops()
-    except:
-        return np.nan
+def score_depth(exp):
+    def _depth(tup):
+        if isinstance(tup, tuple):
+            return 1 + max(map(lambda x : depth(x.args), tup), default=0)
+        else:
+            return 0
+    return _depth(exp.args)
+
+def score_count(exp):
+    return exp.count_ops()
+
+def try_score(score_func):
+    def _inner(exp):
+        try:
+            return score_func(exp)
+        except:
+            return np.nan
+    return _inner
 
 def parse_eq_to_sympy(eq):
     try:
@@ -139,27 +154,99 @@ def parse_time_to_centuries(s):
     # undo offset
     return (ret.days - 365 - 31 - 1) / (365 * 100)
 
+### RICED PLOTTING
+def plot_places(df):    
+    # Plotting
+    df.place.value_counts().head(10).plot(kind='bar', figsize=(10, 6), edgecolor='black')
+
+    # Enhancing the plot
+    plt.title('Most Common Birth Places', fontsize=16, weight='bold')  # Title with better styling
+    plt.xlabel('Birth Place', fontsize=14)  # Label for the x-axis
+    plt.ylabel('Count', fontsize=14)  # Label for the y-axis
+    plt.xticks(fontsize=12, rotation=45, ha='right')  # Rotate x-axis labels for better readability
+    plt.yticks(fontsize=12)  # Increase y-axis tick label size
+    plt.grid(axis='y', linestyle='--', alpha=0.7)  # Add gridlines for clarity
+
+    # Display the plot
+    plt.tight_layout()  # Adjust layout to fit all elements nicely
+    plt.savefig('birth_places.pdf')
+
+def plot_complexity(df):
+    # Plotting
+    plt.figure(figsize=(10, 6))  # Set figure size
+    plt.plot(df.year, df.complexity, 'o', color='blue', alpha=0.7, label='Complexity')  # Add color and transparency
+
+    # Enhancing the plot
+    plt.title('Expression Complexity Over Time', fontsize=16, weight='bold')  # Improve title styling
+    plt.xlabel('Year', fontsize=14)  # Label for the x-axis
+    plt.ylabel('Complexity', fontsize=14)  # Label for the y-axis
+    plt.xticks(fontsize=12)  # Adjust x-axis tick font size
+    plt.yticks(fontsize=12)  # Adjust y-axis tick font size
+    plt.grid(True, linestyle='--', alpha=0.6)  # Add gridlines for clarity
+    plt.legend(fontsize=12, loc='best')  # Add a legend
+
+    # Highlighting trends
+    plt.tight_layout()  # Adjust layout to prevent clipping
+    plt.savefig('complexity_time.pdf')
+    
+def plot_years(df):
+    # Plotting
+    plt.figure(figsize=(10, 6))  # Set figure size
+    df.year.hist(bins='auto', edgecolor='black', alpha=0.7, color='skyblue')  # Styling the histogram
+
+    # Enhancing the plot
+    plt.title('Year Coverage', fontsize=16, weight='bold')  # Improved title
+    plt.xlabel('Year', fontsize=14)  # Label for x-axis
+    plt.ylabel('Frequency', fontsize=14)  # Label for y-axis
+    plt.xticks(fontsize=12)  # Adjust x-axis tick font size
+    plt.yticks(fontsize=12)  # Adjust y-axis tick font size
+    plt.grid(axis='y', linestyle='--', alpha=0.6)  # Add gridlines to y-axis for clarity
+
+    # Final adjustments
+    plt.tight_layout()  # Ensure all elements fit nicely
+    plt.savefig('years_distribution.pdf')
+
+def plot_complexity_hist(df):    
+    # Reversing the order of bins
+    bins = [-np.inf, 15, 18, np.inf]
+    labels = ['Before 15', '15-18', 'After 18']
+
+    # Assigning reversed categories to the DataFrame
+    df['time_period'] = pd.cut(df['year'], bins=bins, labels=labels)
+
+    df = df[df['complexity'] < 100]
+
+    # Plotting
+    plt.figure(figsize=(10, 6))  # Set figure size
+    for period in reversed_labels:
+        df[df['time_period'] == period]['complexity'].hist(
+            bins='auto', alpha=0.3, label=period, edgecolor='black'
+        )
+
+    # Enhancing the plot
+    plt.title('Complexity Distribution for Different Time Periods', fontsize=16, weight='bold')
+    plt.xlabel('Complexity', fontsize=14)
+    plt.ylabel('Frequency', fontsize=14)
+    plt.legend(fontsize=12, title='Time Period')
+    plt.xticks(fontsize=12)
+    plt.yticks(fontsize=12)
+    plt.grid(axis='y', linestyle='--', alpha=0.6)
+
+    # Final adjustments
+    plt.tight_layout()
+    plt.savefig('complexity_hist.pdf')
+    
 if __name__ == '__main__':
     data_file = 'raw'    
     # download_data(data_file)
     # postprocess(data_file)
-    df_raw = load_df(data_file)
-    
-    df_raw.place.value_counts().head(10).plot(kind='bar')    
-    plt.title('most common birth places')
-    plt.show()
+    # df_raw = load_df(data_file)
+
+    plot_places(df_raw)
     
     # discard all invalid vals
     df = df_raw.dropna()
     
-    plt.plot(df.year, df.complexity, 'o')
-    plt.title('expression complexity over time')
-    plt.show()
-    
-    df.year.hist(bins = 'auto')
-    plt.title('year coverage')
-    plt.show()
-    
-    df.groupby( pd.cut(df['year'], [-np.inf, 15, 18, np.inf] ))['complexity'].hist(bins = 'auto', alpha = 0.3, legend = True)
-    plt.title('complexity distribution for different time periods')
-    plt.show()    
+    plot_complexity(df)
+    plot_years(df)
+    plot_complexity_hist(df)
