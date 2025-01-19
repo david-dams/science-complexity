@@ -74,13 +74,11 @@ WHERE
     
 ### POSTPROCESSING
 def postprocess(name):
-    """saves raw data into csv file with structure.
+    """saves raw data into csv file containing raw strings for
 
-    equation_raw_string, date_raw_string, birthplace_raw_string
+    equation name, equation, date, birthplace
     """
      
-    # parse_eq = lambda txt : parse_latex(txt.replace("{\displaystyle", ""))
-
     data = load(name)
 
     def try_get(d, key):
@@ -99,14 +97,23 @@ def postprocess(name):
             birthPlace = try_get(d, 'birthPlaceLabel')
             writer.writerow([eqName, eqContent, birthYear, birthPlace])
             
-def get_valid(name):
-    # currently, we are losing ~1/3 => 500 eqs due to parsing errors (20-ish due to alttext, most of it from sympy)
-    df = pd.read_csv(f'{name}.csv')    
+# currently, we are getting ~1/3 => 500 invalid vals due to parsing errors (20-ish due to alttext, most of it from sympy, 1 due to missing year)
+def load_df(name):
+    df = pd.read_csv(f'{name}.csv')
+    print(f'{df.isna().sum()} invalid labels, equations')
     df['eq'] = df['eq'].apply(parse_eq_to_sympy)
+    print(f'{df.isna().sum()} invalid parsed equations')
     df['year'] = df.year.apply(parse_time_to_centuries)
-    df = df.dropna()
-    df['complexity'] = df['eq'].apply(lambda x : x.count_ops())
+    print(f'{df.isna().sum()} invalid times')
+    df['complexity'] = df['eq'].apply(score_complexity)
+    print(f'{df.isna().sum()} invalid complexity')
     return df
+
+def score_complexity(x):
+    try:
+        return x.count_ops()
+    except:
+        return np.nan
 
 def parse_eq_to_sympy(eq):
     try:
@@ -132,18 +139,7 @@ def parse_time_to_centuries(s):
     # undo offset
     return (ret.days - 365 - 31 - 1) / (365 * 100)
 
-def histogram(res):
-    """displays histogram of equation invention years (proxied by date of birth of inventor / naming person)"""
-    vals = res.values()    
-    m = [parse_time_to_centuries(s) for s in vals]
-    plt.hist(m, bins = 'auto')
-    plt.savefig("eqns_years.pdf")
-    plt.close()
-    
-def filter_time_complexity(comp, c_lower = -np.inf, c_upper = np.inf, y_lower = -np.inf, y_upper = np.inf):
-    idxs = (c_lower < comp[1]) & (comp[1] < c_upper) & (y_lower < comp[0]) & (comp[0] < y_upper)
-    return comp[:, idxs]
-    
+### PLOTTING        
 def hist_complexity(res):
     density = True
 
@@ -174,13 +170,19 @@ def complexity_over_time(df):
 if __name__ == '__main__':
     data_file = 'raw'    
     # download_data(data_file)
-    # df = postprocess(data_file)
+    # postprocess(data_file)
+    # df = load_df(data_file)
+
+    # discard all invalid vals
+    df_clean = df.dropna()
+    
+    # show 15 most common birth places
     hist_birth_place(df, 15)
 
+    # show year disctribution
+    df.year.hist()
+    plt.show()
     
-    
-    # summarize(res)
-
-    # histogram(res)
-
-    # hist_complexity(res)    
+    # show distributions corresponding to different time intervals
+    df.groupby( pd.cut(df['year'], [-np.inf, 15, 18, np.inf] ))['complexity'].hist(bins = 'auto', alpha = 0.3, legend = True)
+    plt.show()    
