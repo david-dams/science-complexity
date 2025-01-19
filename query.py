@@ -12,9 +12,9 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
-# TODO: complexity
 # TODO: hist birth place
 # TODO: replace sympy 
+# TODO: alternative complexity measures?
 
 ### FILE HANDLING
 def save(res, name = 'data'):
@@ -74,33 +74,8 @@ WHERE
     save(res, name)
     
 ### POSTPROCESSING
-# currently, we are losing ~1/3 => 500 eqs due to parsing errors (20-ish due to alttext, most of it from sympy)
-def get_eqs_to_dates_dict(name):    
-    
-    parse_eq = lambda txt : parse_latex(txt.replace("{\displaystyle", ""))
-
-    raw = load(name)    
-    data = raw['results']['bindings']
-    res, errs_alt, errs_eq = {}, {}, {}
-    
-    for d in data:
-        eq_html = html.fromstring(d['equation']['value'])
-        try:
-            eq_txt = dict(eq_html.items())['alttext']
-        except Exception as e:
-            errs_alt[eq_txt] = d
-        date = d['birth']['value']
-        
-        try:
-            eq = parse_eq(eq_txt)
-            res[eq] = date
-        except Exception as e:
-            errs_eq[eq_txt] = e
-            
-    return res, errs_alt, errs_eq
-
 def postprocess(name, print_errs = False):
-    """turns raw data into csv file with structure
+    """returns cleaned data frame. saves raw data into csv file with structure.
 
     equation_raw_string, date_raw_string, birthplace_raw_string
     """
@@ -125,6 +100,15 @@ def postprocess(name, print_errs = False):
             birthPlace = try_get(d, 'birthPlaceLabel')
             writer.writerow([eqName, eqContent, birthYear, birthPlace])
 
+    # currently, we are losing ~1/3 => 500 eqs due to parsing errors (20-ish due to alttext, most of it from sympy)
+    df = pd.read_csv(f'{name}.csv')    
+    df['eq'] = df['eq'].apply(parse_eq_to_sympy)
+    df['year'] = df.year.apply(parse_time_to_centuries)
+    df = df.dropna()
+    df['complexity'] = df['eq'].apply(lambda x : x.count_ops())
+    return df
+
+
 def parse_eq_to_sympy(eq):
     try:
         return parse_latex(eq.replace("{\displaystyle", ""))
@@ -148,19 +132,6 @@ def parse_time_to_centuries(s):
         
     # undo offset
     return (ret.days - 365 - 31 - 1) / (365 * 100)
-
-def max_date(res):
-    vals = res.values()    
-    m = datetime.datetime.min
-    for s in vals:
-        parse = lambda x : datetime.datetime.strptime(x, '%Y-%m-%dT%H:%M:%SZ')
-        if not s.startswith('-'):
-            l = parse(s)
-            m = l if l > m else m
-    return m
-
-def summarize(res):
-    print(f'eqns: {len(res)}. max_date : {max_date(res)}.')    
 
 def histogram(res):
     """displays histogram of equation invention years (proxied by date of birth of inventor / naming person)"""
@@ -202,29 +173,18 @@ def hist_complexity(res):
     plt.show()
     plt.close()
 
+def hist(df, column, restrictions):
+
+    def add_hist(label, c_lower = -np.inf, c_upper = np.inf, y_lower = -np.inf, y_upper = np.inf):
+        comp_filtered = filter_time_complexity(comp, c_lower, c_upper, y_lower, y_upper)
+        plt.hist(comp_filtered[1], bins = 'auto', density = True, label = label, alpha = 0.8)
+    
+
 if __name__ == '__main__':
-    data_file = 'raw'
-    
+    data_file = 'raw'    
     # download_data(data_file)
-    postprocess(data_file)
+    # df = postprocess(data_file)
     
-    df = pd.read_csv(f'{data_file}.csv')    
-    df['eq'] = df['eq'].apply(parse_eq_to_sympy)    
-    # df['year'] = df.year.apply(parse_time_to_centuries)
-
-    stringify = lambda x : sympy.parsing.sympy_parser.parse_expr(sympy.printing.repr.srepr(x))
-    foo = df.copy()
-    foo['eq'] = foo['eq'].apply(stringify)    
-    
-    with open('processed.csv', 'w') as f:
-        df.to_csv(f)
-
-    foo = pd.read_csv('processed.csv')
-    
-    # import pdb; pdb.set_trace()
-
-    # sympy latex parsing takes long
-    # res, _, _ = get_eqs_to_dates_dict(data_file)
     
     # summarize(res)
 
