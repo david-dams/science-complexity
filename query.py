@@ -98,16 +98,13 @@ def postprocess(name):
             writer.writerow([eqName, eqContent, birthYear, birthPlace])
             
 # currently, we are getting ~1/3 => 500 invalid vals due to parsing errors (20-ish due to alttext, most of it from sympy, 1 due to missing year)
-def load_df(name, score = score_count):
-    df = pd.read_csv(f'{name}.csv')
-    print(f'{df.isna().sum()} invalid labels, equations')
-    df['eq'] = df['eq'].apply(parse_eq_to_sympy)
-    print(f'{df.isna().sum()} invalid parsed equations')
-    df['year'] = df.year.apply(parse_time_to_centuries)
-    print(f'{df.isna().sum()} invalid times')
-    df['complexity'] = df['eq'].apply(score_complexity)
-    print(f'{df.isna().sum()} invalid complexity')
-    return df
+def try_score(score_func):
+    def _inner(exp):
+        try:
+            return score_func(exp)
+        except:
+            return np.nan
+    return _inner
 
 @try_score
 def score_depth(exp):
@@ -122,13 +119,16 @@ def score_depth(exp):
 def score_count(exp):
     return exp.count_ops()
 
-def try_score(score_func):
-    def _inner(exp):
-        try:
-            return score_func(exp)
-        except:
-            return np.nan
-    return _inner
+def load_df(name, score = score_count):
+    df = pd.read_csv(f'{name}.csv')
+    print(f'{df.isna().sum()} invalid labels, equations')
+    df['eq'] = df['eq'].apply(parse_eq_to_sympy)
+    print(f'{df.isna().sum()} invalid parsed equations')
+    df['year'] = df.year.apply(parse_time_to_centuries)
+    print(f'{df.isna().sum()} invalid times')
+    df['complexity'] = df['eq'].apply(score)
+    print(f'{df.isna().sum()} invalid complexity')
+    return df
 
 def parse_eq_to_sympy(eq):
     try:
@@ -219,9 +219,9 @@ def plot_complexity_hist(df):
 
     # Plotting
     plt.figure(figsize=(10, 6))  # Set figure size
-    for period in reversed_labels:
+    for period in labels[::-1]:
         df[df['time_period'] == period]['complexity'].hist(
-            bins='auto', alpha=0.3, label=period, edgecolor='black'
+            bins='auto', alpha=0.5, label=period, edgecolor='black'
         )
 
     # Enhancing the plot
