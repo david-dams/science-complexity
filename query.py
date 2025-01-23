@@ -140,7 +140,7 @@ def load_df_from_raw(name, score = score_count):
 
 def parse_eq_to_sympy(eq):
     try:
-        eq = eq.replace('\\vartriangleleft', '+').replace('\\vartriangleright', '+').replace('\\geq', '+').replace('\\leq', '+').replace('\\cong', '+').replace('\\cap', '+').replace("{\displaystyle", "").replace('\\limits', '').replace('*', 'd')
+        eq = eq.replace("{\displaystyle", "")
         return parse_latex(eq)
     except Exception as e:
         return None
