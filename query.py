@@ -85,17 +85,25 @@ def postprocess(name):
         try:
             return d[key]
         except:
-            return None        
+            return None
+        
+    def try_srepr(eqString):
+        try:
+            return sympy.srepr(sympy.srepr(parse_eq_to_sympy(eqString)))
+        except:
+            return None
+
     
     with open(f'{name}.csv', mode='w', newline='') as file:
         writer = csv.writer(file)
-        writer.writerow(["eqName", "eq", "year", "place"])
+        writer.writerow(["eqName", "eqRaw", "eqSympyString", "year", "place"])
         for d in data:
-            birthYear = d['birth']
-            eqName = try_get(d, 'stuffLabel')            
-            eqContent = try_get(dict(html.fromstring(d['equation']).items()), 'alttext')                           
-            birthPlace = try_get(d, 'birthPlaceLabel')
-            writer.writerow([eqName, eqContent, birthYear, birthPlace])
+            birthYear = d['birth']            
+            eqName = try_get(d, 'stuffLabel')
+            eqContent = try_get(dict(html.fromstring(d['equation']).items()), 'alttext')
+            eqSympyString = try_srepr(eqContent)
+            birthPlace = try_get(d, 'birthPlaceLabel')            
+            writer.writerow([eqName, eqContent, eqSympyString, birthYear, birthPlace])
             
 # currently, we are getting ~1/3 => 500 invalid vals due to parsing errors (20-ish due to alttext, most of it from sympy, 1 due to missing year)
 def try_score(score_func):
@@ -118,11 +126,11 @@ def score_depth(exp):
 @try_score
 def score_count(exp):
     return exp.count_ops()
-
-def load_df(name, score = score_count):
+    
+def load_df_from_raw(name, score = score_count):
     df = pd.read_csv(f'{name}.csv')
     print(f'{df.isna().sum()} invalid labels, equations')
-    df['eq'] = df['eq'].apply(parse_eq_to_sympy)
+    df['eq'] = df['eqRaw'].apply(parse_eq_to_sympy)
     print(f'{df.isna().sum()} invalid parsed equations')
     df['year'] = df.year.apply(parse_time_to_centuries)
     print(f'{df.isna().sum()} invalid times')
@@ -132,9 +140,10 @@ def load_df(name, score = score_count):
 
 def parse_eq_to_sympy(eq):
     try:
-        return parse_latex(eq.replace("{\displaystyle", ""))
+        eq = eq.replace('\\vartriangleleft', '+').replace('\\vartriangleright', '+').replace('\\geq', '+').replace('\\leq', '+').replace('\\cong', '+').replace('\\cap', '+').replace("{\displaystyle", "").replace('\\limits', '').replace('*', 'd')
+        return parse_latex(eq)
     except Exception as e:
-        return None    
+        return None
             
 def parse_time_to_centuries(s):
     """parses string to time measured in units of 100yrs"""
@@ -236,12 +245,12 @@ def plot_complexity_hist(df):
     # Final adjustments
     plt.tight_layout()
     plt.savefig('complexity_hist.pdf')
-    
+           
 if __name__ == '__main__':
     data_file = 'raw'    
     # download_data(data_file)
-    # postprocess(data_file)
-    # df_raw = load_df(data_file)
+    postprocess(data_file)
+    df_raw = load_df(data_file)
 
     plot_places(df_raw)
     
