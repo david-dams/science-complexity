@@ -11,7 +11,32 @@ from sympy.parsing.latex import parse_latex
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+from lark import Lark
 
+# Path to your Lark grammar file (adjust this if needed)
+grammar_path = "latex.lark"
+
+# Read the grammar file
+with open(grammar_path, encoding="utf-8") as f:
+    latex_grammar = f.read()
+
+# Initialize Lark parser (mimicking SymPy's approach)
+parser = Lark(
+    latex_grammar,
+    parser="earley",   # Use Earley parser for full LaTeX support
+    start="latex_string",
+    lexer="auto",
+    ambiguity="explicit",
+    propagate_positions=False,
+    maybe_placeholders=False,
+    keep_all_tokens=True
+)
+
+# Test parsing
+expr = "x = 1"
+tree = parser.parse(expr)
+print(tree.pretty())
+1/0
 # TODO: replace sympy 
 # TODO: alternative complexity measures?
 
