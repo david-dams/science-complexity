@@ -22,6 +22,13 @@ def load(name):
         return json.load(fp)
     
 ### POSTPROCESSING
+def run_latexml(name):
+    """creates a moc tex doc from raw.json and runs latexml
+    """
+    
+    return
+
+
 def postprocess(name):
     """saves raw data into csv file containing raw strings for
 
@@ -196,16 +203,5 @@ def plot_complexity_hist(df):
     plt.savefig('complexity_hist.pdf')
            
 if __name__ == '__main__':
-    data_file = 'raw'    
-    # download_data(data_file)
-    postprocess(data_file)
-    df_raw = load_df(data_file)
-
-    plot_places(df_raw)
-    
-    # discard all invalid vals
-    df = df_raw.dropna()
-    
-    plot_complexity(df)
-    plot_years(df)
-    plot_complexity_hist(df)
+    DATA_FILE = 'raw'
+    run_latexml(DATA_FILE)
