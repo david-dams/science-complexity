@@ -1,0 +1,14 @@
+SELECT DISTINCT ?stuff ?stuffLabel ?equation ?person ?birth ?birthPlace ?birthPlaceLabel
+WHERE
+{
+    
+  ?stuff  wdt:P2534 ?equation;
+           (wdt:P138|wdt:P61) ?person.
+    
+  ?person wdt:P569 ?birth.
+  
+  OPTIONAL {?person wdt:P19 ?tmp.
+            ?tmp wdt:P17 ?birthPlace.}
+  
+  SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE]". }
+}
