@@ -11,34 +11,6 @@ from sympy.parsing.latex import parse_latex
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-from lark import Lark
-
-# Path to your Lark grammar file (adjust this if needed)
-grammar_path = "latex.lark"
-
-# Read the grammar file
-with open(grammar_path, encoding="utf-8") as f:
-    latex_grammar = f.read()
-
-# Initialize Lark parser (mimicking SymPy's approach)
-parser = Lark(
-    latex_grammar,
-    parser="earley",   # Use Earley parser for full LaTeX support
-    start="latex_string",
-    lexer="auto",
-    ambiguity="explicit",
-    propagate_positions=False,
-    maybe_placeholders=False,
-    keep_all_tokens=True
-)
-
-# Test parsing
-expr = "x = 1"
-tree = parser.parse(expr)
-print(tree.pretty())
-1/0
-# TODO: replace sympy 
-# TODO: alternative complexity measures?
 
 ### FILE HANDLING
 def save(res, name = 'data'):
@@ -48,54 +20,6 @@ def save(res, name = 'data'):
 def load(name):
     with open(f"{name}.json", 'r') as fp:
         return json.load(fp)
-
-### WEB
-def fetch_sparql_results(sparql_query):
-    """
-    Sends a GET request to the Wikidata SPARQL endpoint with the provided query and retrieves the results in JSON format.
-
-    Args:
-        sparql_query (str): The SPARQL query string to be sent.
-
-    Returns:
-        dict: The JSON response from the server.
-
-    Raises:
-        requests.exceptions.RequestException: If the request fails.
-    """
-    base_url = "https://query.wikidata.org/bigdata/namespace/wdq/sparql"
-    params = {
-        "query": sparql_query,
-        "format": "json"
-    }
-
-    try:
-        response = requests.get(base_url, params=params)
-        response.raise_for_status()  # Raise an HTTPError if the response code is 4xx/5xx
-        return response.json()
-    except requests.exceptions.RequestException as e:
-        print(f"An error occurred: {e}")
-        raise
-        
-def download_data(name):
-    query = """
-SELECT DISTINCT ?stuff ?stuffLabel ?equation ?person ?birth ?birthPlace ?birthPlaceLabel
-WHERE
-{
-    
-  ?stuff  wdt:P2534 ?equation;
-           (wdt:P138|wdt:P61) ?person.
-    
-  ?person wdt:P569 ?birth.
-  
-  OPTIONAL {?person wdt:P19 ?tmp.
-            ?tmp wdt:P17 ?birthPlace.}
-  
-  SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE]". }
-}
-    """
-    res =  fetch_sparql_results(query)
-    save(res, name)
     
 ### POSTPROCESSING
 def postprocess(name):
