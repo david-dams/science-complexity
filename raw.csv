@@ -1,13 +1,13 @@
 eqName,eq,year,place
 Fresnel number,{\displaystyle F={\frac {a^{2}}{L\lambda }}},1788-05-10T00:00:00Z,France
-Legendre transformation,{\displaystyle f^{*}(x^{*})=\sup _{x\in I}(x^{*}x-f(x))},1752-09-18T00:00:00Z,France
-Lebesgue function,{\displaystyle \lambda _{n}(x)=\sum _{j=0}^{n}|\ell _{j}(x)|.},1875-06-28T00:00:00Z,France
+Legendre transformation,{\displaystyle f^{*}(y)=\sup _{x\in I}(yx-f(x))},1752-09-18T00:00:00Z,France
+Lebesgue function,{\displaystyle \lambda _{n}(x)=\sum _{j=0}^{n}|\ell _{j}(x)|},1875-06-28T00:00:00Z,France
 Fresnel integral C,{\displaystyle \mathrm {C} (z)=\int \limits _{0}^{z}\cos {\left({\frac {\pi }{2}}t^{2}\right)}\mathrm {d} t},1788-05-10T00:00:00Z,France
 Stirling's approximation,{\displaystyle \ln n!=n\ln n-n+O(\ln n)},1667-05-26T00:00:00Z,France
-Legendre transform,{\displaystyle {\mathcal {J}}_{n}\{f(x)\}={\tilde {f}}(n)=\int _{-1}^{1}P_{n}(x)\ f(x)\ dx},1752-09-18T00:00:00Z,France
-Poisson binomial distribution,{\displaystyle \mu =\sum \limits _{i=1}^{n}p_{i}},1781-06-21T00:00:00Z,France
-Bayesian inference,{\displaystyle P(H\mid E)={\frac {P(E\mid H)\cdot P(H)}{P(E)}}},1702-01-01T00:00:00Z,United Kingdom
-Bayes factor,"{\displaystyle {\frac {\int \Pr(\theta _{1}|M_{1})\Pr(D|\theta _{1},M_{1})\,d\theta _{1}}{\int \Pr(\theta _{2}|M_{2})\Pr(D|\theta _{2},M_{2})\,d\theta _{2}}}}",1702-01-01T00:00:00Z,United Kingdom
+Legendre transform,{\displaystyle {\mathcal {J}}_{n}(f(x))={\tilde {f}}(n)=\int _{-1}^{1}P_{n}(x)\ f(x)\ dx},1752-09-18T00:00:00Z,France
+Poisson binomial distribution,{\displaystyle \mu =\sum_{i=1}^{n}p_{i}},1781-06-21T00:00:00Z,France
+Bayesian inference,{\displaystyle P_E(H)={\frac {P_H(E)\cdot P(H)}{P(E)}}},1702-01-01T00:00:00Z,United Kingdom
+Bayes factor,"{\displaystyle {\frac{\int P(\theta_{1}, M_{1}) P(D, \theta_{1}, M_{1}) d\theta _{1}}{\int P(\theta_{2}, M_{2})P(D,\theta_{2},M_{2}) d\theta_{2}}}}",1702-01-01T00:00:00Z,United Kingdom
 Zassenhaus lemma,{\displaystyle B\mathrel {\vartriangleleft } A\leq G\geq C\mathrel {\vartriangleright } D\implies {\frac {(A\cap C)B}{(A\cap D)B}}\cong {\frac {(A\cap C)D}{(B\cap C)D}}},1912-05-28T00:00:00Z,Germany
 Virasoro algebra,"{\displaystyle [L_{m},L_{n}]=(m-n)L_{m+n}+{\frac {c}{12}}(m^{3}-m)\delta _{m+n,0}}",1940-05-09T00:00:00Z,Argentina
 Legendre's theorem on spherical triangles,{\displaystyle \alpha '_{i}\approx \alpha _{i}-{\frac {\varepsilon }{3}}},1752-09-18T00:00:00Z,France

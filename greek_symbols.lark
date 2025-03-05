@@ -14,6 +14,7 @@ LAMBDA: "\\lambda" // TODO: What about the uppercase variant?
 MU: "\\mu"
 NU: "\\nu"
 XI: "\\xi"
+PI: "\\pi"
 // TODO: Should there be a separate note for transforming \pi into sympy.pi?
 RHO: "\\rho" | "\\varrho"
 // TODO: What should we do about sigma?
@@ -25,4 +26,4 @@ PSI: "\\psi"
 OMEGA: "\\omega"
 
 GREEK_SYMBOL: ALPHA | BETA | GAMMA | DELTA | EPSILON | ZETA | ETA | THETA | KAPPA
-    | LAMBDA | MU | NU | XI | RHO | TAU | UPSILON | PHI | CHI | PSI | OMEGA
+    | LAMBDA | MU | NU | XI | RHO | TAU | UPSILON | PHI | CHI | PSI | OMEGA | PI

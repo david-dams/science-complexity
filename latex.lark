@@ -113,15 +113,15 @@ UPRIGHT_DIFFERENTIAL_SYMBOL: "\\text{d}" | "\\mathrm{d}"
 DIFFERENTIAL_SYMBOL: "d" | UPRIGHT_DIFFERENTIAL_SYMBOL
 
 // disallow "d" as a variable name because we want to parse "d" as a differential symbol.
-SYMBOL: /[a-zA-Z]'*/
+SYMBOL: /[a-zA-Z]'*/ | "\\ell"
 GREEK_SYMBOL_WITH_PRIMES: GREEK_SYMBOL "'"*
-LATIN_SYMBOL_WITH_LATIN_SUBSCRIPT: /([a-zA-Z]'*)_(([A-Za-z0-9]|[a-zA-Z]+)|\{([A-Za-z0-9]|[a-zA-Z]+'*)\})/
-LATIN_SYMBOL_WITH_GREEK_SUBSCRIPT: /([a-zA-Z]'*)_/ GREEK_SYMBOL | /([a-zA-Z]'*)_/ L_BRACE GREEK_SYMBOL_WITH_PRIMES R_BRACE
+LATIN_SYMBOL_WITH_LATIN_SUBSCRIPT: L_BRACE SYMBOL R_BRACE "_" (SYMBOL|L_BRACE SYMBOL R_BRACE)
+LATIN_SYMBOL_WITH_GREEK_SUBSCRIPT: /([a-zA-Z]'*)\s*_\s*/ GREEK_SYMBOL | /([a-zA-Z]'*)\s*_\s*/ L_BRACE GREEK_SYMBOL_WITH_PRIMES R_BRACE
 // best to define the variant with braces like that instead of shoving it all into one case like in
 // /([a-zA-Z])_/ L_BRACE? GREEK_SYMBOL R_BRACE? because then we can easily error out on input like
 // r"h_{\theta"
-GREEK_SYMBOL_WITH_LATIN_SUBSCRIPT: GREEK_SYMBOL_WITH_PRIMES /_(([A-Za-z0-9]|[a-zA-Z]+)|\{([A-Za-z0-9]|[a-zA-Z]+'*)\})/
-GREEK_SYMBOL_WITH_GREEK_SUBSCRIPT: GREEK_SYMBOL_WITH_PRIMES /_/ (GREEK_SYMBOL | L_BRACE GREEK_SYMBOL_WITH_PRIMES R_BRACE)
+GREEK_SYMBOL_WITH_LATIN_SUBSCRIPT: GREEK_SYMBOL_WITH_PRIMES /\s*_\s*(([A-Za-z0-9]|[a-zA-Z]+)|\{([A-Za-z0-9]|[a-zA-Z]+'*)\})/
+GREEK_SYMBOL_WITH_GREEK_SUBSCRIPT: GREEK_SYMBOL_WITH_PRIMES /\s*_\s*/ (GREEK_SYMBOL | L_BRACE GREEK_SYMBOL_WITH_PRIMES R_BRACE)
 MULTI_LETTER_SYMBOL: /[a-zA-Z]+(\s+[a-zA-Z]+)*'*/
 
 %import common.DIGIT -> DIGIT
@@ -186,6 +186,7 @@ _one_letter_symbol: SYMBOL
     | GREEK_SYMBOL_WITH_LATIN_SUBSCRIPT
     | GREEK_SYMBOL_WITH_GREEK_SUBSCRIPT
     | GREEK_SYMBOL_WITH_PRIMES
+
 // LuaTeX-generated outputs of \mathit{foo'} and \mathit{foo}'
 // seem to be the same on the surface. We allow both styles.
 multi_letter_symbol: CMD_MATHIT L_BRACE MULTI_LETTER_SYMBOL R_BRACE
@@ -224,6 +225,7 @@ adjacent_expressions: (_one_letter_symbol | number | _symbol_conj) _expression_m
     | group_round_parentheses (group_round_parentheses | _one_letter_symbol)
     | _function _function
     | fraction _expression_mul
+    | group_curly_parentheses _expression
 
 _expression_func: _expression_core
     | group_round_parentheses
