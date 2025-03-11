@@ -4,13 +4,15 @@ import pickle
 import datetime
 import csv
 
-from lxml import html
+from lxml import html, etree
 import sympy
 from sympy.parsing.latex import parse_latex
 
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+
+import subprocess
 
 ### FILE HANDLING
 def save(res, name = 'data'):
@@ -22,85 +24,74 @@ def load(name):
         return json.load(fp)
     
 ### POSTPROCESSING
-def run_latexml(name):
-    """creates a moc tex doc from raw.json and runs latexml
+def extract_data(name):
+    """returns a list of readable dicts containing equation string, year, name, country
     """
+
+    entries = load(name)
+    ret = []
     
-    return
-
-
-def postprocess(name):
-    """saves raw data into csv file containing raw strings for
-
-    equation name, equation, date, birthplace
-    """
-     
-    data = load(name)
-
-    def try_get(d, key):
+    dropout = 0
+    for entry in entries:                
         try:
-            return d[key]
-        except:
-            return None
-        
-    def try_srepr(eqString):
-        try:
-            return sympy.srepr(sympy.srepr(parse_eq_to_sympy(eqString)))
-        except:
-            return None
+            equation = dict(
+                html.fromstring(entry['equation']).items()
+            )
+            # 13 eqs dont have alttext bc of some internal parsing error
+            content = equation['alttext']
 
-    
-    with open(f'{name}.csv', mode='w', newline='') as file:
-        writer = csv.writer(file)
-        writer.writerow(["eqName", "eqRaw", "eqSympyString", "year", "place"])
-        for d in data:
-            birthYear = d['birth']            
-            eqName = try_get(d, 'stuffLabel')
-            eqContent = try_get(dict(html.fromstring(d['equation']).items()), 'alttext')
-            eqSympyString = try_srepr(eqContent)
-            birthPlace = try_get(d, 'birthPlaceLabel')            
-            writer.writerow([eqName, eqContent, eqSympyString, birthYear, birthPlace])
+            # country is not that important
+            country = entry['birthPlaceLabel'] if 'birtPlaceLabel' in entry else None
+
+            # these are okay
+            year = entry['birth']
+            name = entry['stuffLabel']
             
-# currently, we are getting ~1/3 => 500 invalid vals due to parsing errors (20-ish due to alttext, most of it from sympy, 1 due to missing year)
-def try_score(score_func):
-    def _inner(exp):
-        try:
-            return score_func(exp)
-        except:
-            return np.nan
-    return _inner
-
-@try_score
-def score_depth(exp):
-    def _depth(tup):
-        if isinstance(tup, tuple):
-            return 1 + max(map(lambda x : depth(x.args), tup), default=0)
-        else:
-            return 0
-    return _depth(exp.args)
-
-@try_score
-def score_count(exp):
-    return exp.count_ops()
-    
-def load_df_from_raw(name, score = score_count):
-    df = pd.read_csv(f'{name}.csv')
-    print(f'{df.isna().sum()} invalid labels, equations')
-    df['eq'] = df['eqRaw'].apply(parse_eq_to_sympy)
-    print(f'{df.isna().sum()} invalid parsed equations')
-    df['year'] = df.year.apply(parse_time_to_centuries)
-    print(f'{df.isna().sum()} invalid times')
-    df['complexity'] = df['eq'].apply(score)
-    print(f'{df.isna().sum()} invalid complexity')
-    return df
-
-def parse_eq_to_sympy(eq):
-    try:
-        eq = eq.replace("{\displaystyle", "")
-        return parse_latex(eq)
-    except Exception as e:
-        return None
+            ret.append( {"content" : content, "year" : year, "name" : name, "country" : country} )
             
+        except:
+            dropout += 1
+            
+    print(f"Dropout: {dropout}")
+
+    return ret
+
+def data_to_tex(data):
+    """writes all equations into a minimal tex file to be processed by latexml"""
+    
+    header = r"\documentclass{article} \usepackage[margin=0.7in]{geometry} \usepackage[parfill]{parskip} \usepackage[utf8]{inputenc}\usepackage{amsmath,amssymb,amsfonts,amsthm} \begin{document}"
+    footer = r"\end{document}"
+    
+    eq_env = r"\begin{equation} INSERT \end{equation}"    
+    eq_block = "\n"
+    for element in data:
+        eq_block += eq_env.replace("INSERT", element["content"]) + "\n"
+
+    content = header + eq_block + footer
+    
+    with open("data.tex", "w") as f:
+        f.write(content)
+
+
+def tex_to_xml():
+    """runs latexml"""
+
+    # Define the command and arguments
+    command = ["latexml", "--dest=data.xml", "data.tex"]
+
+    # Run the command
+    result = subprocess.run(command, capture_output=True, text=True)
+
+    # Print the output
+    print("STDOUT:", result.stdout)
+    print("STDERR:", result.stderr)
+
+def xml_to_pandas():
+    tree = etree.parse("data.xml")
+    equations = [y for y in [x for x in tree.getroot()][2]]
+    
+    import pdb; pdb.set_trace()
+                          
 def parse_time_to_centuries(s):
     """parses string to time measured in units of 100yrs"""
     # pattern '-1702-01-01T00:00:00Z'
@@ -204,4 +195,7 @@ def plot_complexity_hist(df):
            
 if __name__ == '__main__':
     DATA_FILE = 'raw'
-    run_latexml(DATA_FILE)
+    # equations = extract_data(DATA_FILE)
+    # data_to_tex(equations)
+    # tex_to_xml()
+    xml_to_pandas()
