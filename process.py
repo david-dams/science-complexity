@@ -41,8 +41,8 @@ def extract_data(name):
             content = equation['alttext']
 
             # country is not that important
-            country = entry['birthPlaceLabel'] if 'birtPlaceLabel' in entry else None
-
+            country = entry['birthPlaceLabel'] if 'birthPlaceLabel' in entry else None
+            
             # these are okay
             year = entry['birth']
             name = entry['stuffLabel']
@@ -62,10 +62,12 @@ def data_to_tex(data):
     header = r"\documentclass{article} \usepackage[margin=0.7in]{geometry} \usepackage[parfill]{parskip} \usepackage[utf8]{inputenc}\usepackage{amsmath,amssymb,amsfonts,amsthm} \begin{document}"
     footer = r"\end{document}"
     
-    eq_env = r"\begin{equation} INSERT \end{equation}"    
+    eq_env = r"\begin{equation} INSERT LABEL\end{equation}"    
     eq_block = "\n"
     for element in data:
-        eq_block += eq_env.replace("INSERT", element["content"]) + "\n"
+        year, country, name = element["year"], element["country"], element["name"]
+        label = "\\label{" + f"year={year}" + f", country={country}, " + f"name={name}" + "}"        
+        eq_block += eq_env.replace("INSERT", element["content"]).replace("LABEL", label) + "\n"
 
     content = header + eq_block + footer
     
@@ -86,11 +88,56 @@ def tex_to_xml():
     print("STDOUT:", result.stdout)
     print("STDERR:", result.stderr)
 
-def xml_to_pandas():
-    tree = etree.parse("data.xml")
-    equations = [y for y in [x for x in tree.getroot()][2]]
+def compute_depth(elem, current=0):
+    """Compute max depth of XML tree."""
+    children = list(elem)
+    if not children:
+        return current
+    return max(compute_depth(child, current + 1) for child in children)
+
+def process_equation(eq, label):
+    # Define namespace mapping
+    ns = {'ltx': 'http://dlmf.nist.gov/LaTeXML'}
+
+    # labels always look like year, country, name
+    labels = label.replace("LABEL:", "").split(",")        
+    year = parse_time_to_centuries(labels[0].split("=")[-1])
+    country = labels[1].split("=")[-1]
+    name = labels[2].split("=")[-1]        
+
+    xmath = eq.find('.//ltx:XMath', namespaces=ns)
+    depth = None
+    if xmath is not None:
+        depth = compute_depth(xmath)
+
+    return {"year" : year,
+            "name" : name,
+            "country" : country,
+            "depth" : depth}
     
-    import pdb; pdb.set_trace()
+def xml_to_pandas(data):    
+    tree = etree.parse("data.xml")
+    root = tree.getroot()
+    
+    # Define namespace mapping
+    ns = {'ltx': 'http://dlmf.nist.gov/LaTeXML'}
+
+    # Find all single equations
+    single_equations = root.xpath('//ltx:equation[not(ancestor::ltx:equationgroup)]', namespaces=ns)
+    dict_list = [process_equation(eq, eq.get('labels')) for eq in single_equations]
+    
+    # Find all equation groups
+    equation_groups = root.findall('.//ltx:equationgroup', namespaces=ns)
+
+    group_data = []
+    for group in equation_groups:
+        labels = group.get('labels')
+        dict_list += [process_equation(eq, labels) for eq in group]
+
+    df = pd.DataFrame(dict_list)
+    
+    return df
+            
                           
 def parse_time_to_centuries(s):
     """parses string to time measured in units of 100yrs"""
@@ -113,7 +160,7 @@ def parse_time_to_centuries(s):
 ### RICED PLOTTING
 def plot_places(df):    
     # Plotting
-    df.place.value_counts().head(10).plot(kind='bar', figsize=(10, 6), edgecolor='black')
+    df.country.value_counts().head(10).plot(kind='bar', figsize=(10, 6), edgecolor='black')
 
     # Enhancing the plot
     plt.title('Most Common Birth Places', fontsize=16, weight='bold')  # Title with better styling
@@ -127,10 +174,10 @@ def plot_places(df):
     plt.tight_layout()  # Adjust layout to fit all elements nicely
     plt.savefig('birth_places.pdf')
 
-def plot_complexity(df):
+def plot_depth(df):
     # Plotting
     plt.figure(figsize=(10, 6))  # Set figure size
-    plt.plot(df.year, df.complexity, 'o', color='blue', alpha=0.7, label='Complexity')  # Add color and transparency
+    plt.plot(df.year, df.depth, 'o', color='blue', alpha=0.7, label='Complexity')  # Add color and transparency
 
     # Enhancing the plot
     plt.title('Expression Complexity Over Time', fontsize=16, weight='bold')  # Improve title styling
@@ -162,7 +209,7 @@ def plot_years(df):
     plt.tight_layout()  # Ensure all elements fit nicely
     plt.savefig('years_distribution.pdf')
 
-def plot_complexity_hist(df):    
+def plot_depth_hist(df):    
     # Reversing the order of bins
     bins = [-np.inf, 15, 18, np.inf]
     labels = ['Before 15', '15-18', 'After 18']
@@ -171,12 +218,12 @@ def plot_complexity_hist(df):
     df['time_period'] = pd.cut(df['year'], bins=bins, labels=labels)
 
     # outliers
-    df = df[df['complexity'] < 100]
+    df = df[df['depth'] < 100]
 
     # Plotting
     plt.figure(figsize=(10, 6))  # Set figure size
     for period in labels[::-1]:
-        df[df['time_period'] == period]['complexity'].hist(
+        df[df['time_period'] == period]['depth'].hist(
             bins='auto', alpha=0.5, label=period, edgecolor='black'
         )
 
@@ -195,7 +242,12 @@ def plot_complexity_hist(df):
            
 if __name__ == '__main__':
     DATA_FILE = 'raw'
-    # equations = extract_data(DATA_FILE)
+    equations = extract_data(DATA_FILE)
     # data_to_tex(equations)
     # tex_to_xml()
-    xml_to_pandas()
+    df = xml_to_pandas(equations)
+
+    plot_places(df)
+    plot_depth(df)
+    plot_years(df)
+    plot_depth_hist(df)
