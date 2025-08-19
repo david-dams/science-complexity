@@ -281,9 +281,10 @@ def plot_complexity(df, key, year = -np.inf, label = None):
     plt.tight_layout()  # Adjust layout to prevent clipping
     plt.savefig(f'{key}_time.pdf')
     
-def get_statistics(df, key):
+def get_statistics(df, key, upper = np.inf, lower = -np.inf):
     X = df[key]
     legal = ~np.logical_or(df.year.isna(), df[key].isna())
+    legal = np.logical_and(legal, np.logical_and(df.year <= upper, df.year >= lower))
     years = np.array(df.year[legal])
     complexity = np.array(df[key][legal])
 
@@ -350,11 +351,12 @@ if __name__ == '__main__':
         
     # plot_places(df)
     # plot_years(df)
-    
-    plot_complexity(df, year = 15, key = "depth", label = "Tree Depth")
-    plot_hist(df, key = "depth", label = "Tree Depth")
-    pprint(get_statistics(df, "depth"))
 
-    plot_complexity(df, year = 15, key = "nodes", label = "Node Count")
+    lower, upper = 18, np.inf
+    plot_complexity(df, year = lower, key = "depth", label = "Tree Depth")
+    plot_hist(df, key = "depth", label = "Tree Depth")
+    pprint(get_statistics(df, "depth", lower = lower, upper = np.inf))
+
+    plot_complexity(df, year = 18, key = "nodes", label = "Node Count")
     plot_hist(df, key = "nodes", label = "Node Count")
-    pprint(get_statistics(df, "nodes"))
+    pprint(get_statistics(df, "nodes", lower = lower, upper = np.inf))
