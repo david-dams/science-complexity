@@ -342,6 +342,14 @@ def debug_info():
 def attach_column(df, func, label):
     col = len(df.columns)
     df.insert(col, label, [func(x) if x is not None else None for x in df.raw ])
+
+
+def summarize_by_interval(df, key, name = 'century', digit = 0):
+    df2 = df.copy()
+    df2.insert(len(df.columns), name, df.year.round(digit))
+    summary = df2.groupby(name)[key].agg(['mean', 'std']).reset_index()    
+    return summary
+    
     
 if __name__ == '__main__':
     df = get_df()
@@ -352,6 +360,7 @@ if __name__ == '__main__':
     # plot_places(df)
     # plot_years(df)
 
+    # tests with years
     lower, upper = 18, np.inf
     plot_complexity(df, year = lower, key = "depth", label = "Tree Depth")
     plot_hist(df, key = "depth", label = "Tree Depth")
@@ -360,3 +369,16 @@ if __name__ == '__main__':
     plot_complexity(df, year = 18, key = "nodes", label = "Node Count")
     plot_hist(df, key = "nodes", label = "Node Count")
     pprint(get_statistics(df, "nodes", lower = lower, upper = np.inf))
+
+    # tests with decades
+    nodes_decade = summarize_by_interval(df, "nodes", "decade", 1)
+    depth_decade = summarize_by_interval(df, "depth", "decade", 1)
+
+    plt.plot(nodes_decade["decade"], nodes_decade["mean"])
+    plt.show()
+    plt.close()
+
+    plt.plot(depth_decade["decade"], depth_decade["mean"])
+    plt.show()
+
+
