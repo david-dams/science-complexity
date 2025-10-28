@@ -1,23 +1,18 @@
-import requests
 import json
-import pickle
 import datetime
 import csv
+import subprocess
+from pprint import pprint
 
 from lxml import html, etree
-import sympy
-from sympy.parsing.latex import parse_latex
 
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
-import subprocess
-
 import statsmodels.api as sm
 from statsmodels.tsa.stattools import adfuller, kpss
 
-from pprint import pprint
 
 ### FILE HANDLING
 def save(res, name = 'data'):
@@ -186,7 +181,7 @@ def parse_time_to_centuries(s):
     # undo offset
     return (ret.days - 365 - 31 - 1) / (365 * 100)
 
-### RICED PLOTTING
+### PLOTTING
 def plot_places(df):    
     # Plotting
     df.country.value_counts().head(10).plot(kind='bar', figsize=(10, 6), edgecolor='black')
@@ -344,36 +339,44 @@ def attach_column(df, func, label):
     df.insert(col, label, [func(x) if x is not None else None for x in df.raw ])
 
 
-def summarize_by_interval(df, key, name = 'century', digit = 0):
+def summarize_by_interval(df, key, name = 'century', digit = 1):
     df2 = df.copy()
-    df2.insert(len(df.columns), name, df.year.round(digit))
-    summary = df2.groupby(name)[key].agg(['mean', 'std']).reset_index()    
+    df2.insert(len(df.columns), name, ((df.year * 1000) // 10**digit).round(digit))
+    summary = df2.groupby(name)[key].agg(mean = 'mean', std=lambda x: x.std(ddof=0)).reset_index()    
     return summary
     
     
 if __name__ == '__main__':
+    if len(sys.argv) != 1:
+        df = get_df_from_raw_data()
+        
     df = get_df()
 
     attach_column(df, compute_depth, "depth")
     attach_column(df, compute_nodes, "nodes")
         
-    # plot_places(df)
-    # plot_years(df)
-
+    plot_places(df)
+    plt.close()
+    plot_years(df)
+    
     # tests with years
-    lower, upper = 18, np.inf
-    plot_complexity(df, year = lower, key = "depth", label = "Tree Depth")
-    plot_hist(df, key = "depth", label = "Tree Depth")
-    pprint(get_statistics(df, "depth", lower = lower, upper = np.inf))
 
-    plot_complexity(df, year = 18, key = "nodes", label = "Node Count")
-    plot_hist(df, key = "nodes", label = "Node Count")
-    pprint(get_statistics(df, "nodes", lower = lower, upper = np.inf))
+    # depth
+    # lower, upper = 18, np.inf
+    # plot_complexity(df, year = lower, key = "depth", label = "Tree Depth")
+    # plot_hist(df, key = "depth", label = "Tree Depth")
+    # pprint(get_statistics(df, "depth", lower = lower, upper = np.inf))
+    
+    # nodes
+    # plot_complexity(df, year = 18, key = "nodes", label = "Node Count")
+    # plot_hist(df, key = "nodes", label = "Node Count")
+    # pprint(get_statistics(df, "nodes", lower = lower, upper = np.inf))
+    # plt.close()
 
     # tests with decades
-    nodes_decade = summarize_by_interval(df, "nodes", "decade", 1)
-    depth_decade = summarize_by_interval(df, "depth", "decade", 1)
-
+    nodes_decade = summarize_by_interval(df, "nodes", "decade", 2)
+    depth_decade = summarize_by_interval(df, "depth", "decade", 2)
+    
     plt.plot(nodes_decade["decade"], nodes_decade["mean"])
     plt.show()
     plt.close()
